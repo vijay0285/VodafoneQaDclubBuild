@@ -1,4 +1,4 @@
-# STCKSA Android App — Build & Publish Guide
+# Vfq Dclub Android App - Build & Publish Guide
 
 ## 📦 Project Info
 - **App Name:** Dclub
