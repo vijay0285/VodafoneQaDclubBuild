@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ludo — لودو</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+:root{
+  --rc:#C62828; --rh:#FF8A80; --rs:#7B0000;
+  --bc:#1565C0; --bh:#82B1FF; --bs:#003082;
+  --gc:#2E7D32; --gh:#69F0AE; --gs:#00520A;
+  --yc:#F9C800; --yh:#FFE97A; --ys:#B89000;
+  --bg:#14082A; --bg2:#1E1040; --bg3:#271550;
+  --gold:#D4A017; --gold2:#F5C518;
+  --text:#F0EDF8; --text2:#9B91C4;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Cairo',sans-serif;touch-action:manipulation;}
+#app{display:flex;flex-direction:column;align-items:center;height:100%;width:100%;padding:5px;gap:4px;overflow:hidden;}
+
+/* SCORES */
+#scores{display:flex;gap:4px;width:100%;max-width:520px;flex-shrink:0;}
+.sp{flex:1;display:flex;align-items:center;gap:4px;background:var(--bg2);border-radius:8px;padding:4px 6px;border:2px solid transparent;transition:border-color .3s;}
+.sp.active{border-color:var(--gold);}
+.sp.won{background:rgba(212,160,23,.2);}
+.sd{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.sn{font-size:8px;font-weight:700;color:var(--text2);text-transform:uppercase;}
+.sv{font-size:11px;font-weight:800;color:var(--text);}
+
+/* STATUS */
+#sb{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:520px;flex-shrink:0;background:var(--bg2);border-radius:10px;padding:6px 12px;border:1px solid rgba(212,160,23,.2);}
+#ti{display:flex;align-items:center;gap:7px;}
+#td{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,.3);transition:background .3s;}
+#tl{font-size:12px;font-weight:700;color:var(--text);}
+#ra{display:flex;align-items:center;gap:8px;}
+#mg{font-size:10px;color:var(--text2);max-width:108px;text-align:right;line-height:1.3;}
+#mg b{color:var(--gold2);}
+#dc-wrap{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;}
+#dc{
+  width:52px;height:52px;border-radius:10px;
+  background:var(--bg3);
+  border:3px solid var(--gold);
+  cursor:pointer;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  grid-template-rows:1fr 1fr 1fr;
+  padding:5px;gap:3px;
+  box-shadow:0 3px 14px rgba(212,160,23,.4);
+  position:relative;
+  flex-shrink:0;
+  transition:background .2s;
+}
+#dc.rolled{background:#fff;}
+#dc:active{transform:scale(.86);}
+#dc.spin{animation:dspin .42s ease;}
+@keyframes dspin{0%{transform:rotate(0)scale(1)}40%{transform:rotate(-20deg)scale(.82)}70%{transform:rotate(12deg)scale(.9)}100%{transform:rotate(0)scale(1)}}
+#dc.off{opacity:.28;pointer-events:none;}
+/* 9 dot positions in 3×3 grid — shown/hidden per face value */
+#dc-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;pointer-events:none;transition:opacity .2s;}
+#dc.rolled #dc-icon{opacity:0;}
+.dp{width:100%;height:100%;border-radius:50%;background:transparent;transition:background .15s;}
+.dp.on{background:#1A0A2E;}
+#dc-label{font-size:9px;font-weight:700;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;}
+
+/* BOARD */
+#bw{flex:1;display:flex;align-items:center;justify-content:center;width:100%;max-width:520px;min-height:0;}
+#bd{position:relative;background:#EBE4D0;border-radius:11px;border:3px solid #2C1A08;box-shadow:0 8px 40px rgba(0,0,0,.75);}
+
+/* grid cells */
+.bc{position:absolute;border:.4px solid rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;}
+.cp{background:#fff;} .cs{background:#8BC98A;}
+.csr{background:#FFCDD2;} .csb{background:#BBDEFB;} .csg{background:#C8E6C9;} .csy{background:#FFF3E0;}
+.clr{background:#FFCDD2;} .clb{background:#BBDEFB;} .clg{background:#C8E6C9;} .cly{background:#FFF3E0;}
+.chr{background:#FFCDD2;} .chb{background:#BBDEFB;} .chg{background:#C8E6C9;} .chy{background:#FFF3E0;}
+.cctr{background:#fff;}
+.star::after{content:'★';color:rgba(0,0,0,.2);font-size:inherit;pointer-events:none;}
+
+/* ── HOME QUADRANT OVERLAY ──
+   One big div per corner covering the 6×6 home area.
+   Contains 4 coin-slot circles in a 2×2 grid. */
+.hquad{
+  position:absolute;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  grid-template-rows:1fr 1fr;
+  gap:10%;
+  padding:13%;
+  border-radius:8px;
+  z-index:4;
+  pointer-events:none;
+}
+/* Slot = empty circle waiting for a pawn */
+.hslot{
+  border-radius:50%;
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.25);
+}
+.hqr{background:rgba(198,40,40,.22);}
+.hqr .hslot{background:rgba(198,40,40,.3);border:2.5px solid rgba(255,120,100,.55);}
+.hqb{background:rgba(21,101,192,.22);}
+.hqb .hslot{background:rgba(21,101,192,.3);border:2.5px solid rgba(100,160,255,.55);}
+.hqg{background:rgba(46,125,50,.22);}
+.hqg .hslot{background:rgba(46,125,50,.3);border:2.5px solid rgba(100,210,110,.55);}
+.hqy{background:rgba(200,160,0,.22);}
+.hqy .hslot{background:rgba(200,160,0,.3);border:2.5px solid rgba(255,220,50,.6);}
+
+/* ── PAWN — vertical standing chess-pawn style ──
+   Structure: head (sphere) + neck (tapered cylinder) + base (wide disc)
+   Total height ~2.2× cell size so it's very prominent */
+.pawn{
+  position:absolute;
+  display:flex;flex-direction:column;align-items:center;
+  cursor:default;pointer-events:none;
+  z-index:30;
+  filter:drop-shadow(0 5px 7px rgba(0,0,0,.6));
+  transition:left .2s cubic-bezier(.4,0,.2,1), top .2s cubic-bezier(.4,0,.2,1);
+}
+.ph{ /* head */ border-radius:50%;flex-shrink:0;position:relative; }
+.ph::after{content:'';position:absolute;top:14%;left:18%;width:32%;height:32%;border-radius:50%;background:rgba(255,255,255,.5);pointer-events:none;}
+.pn{ /* neck */ flex-shrink:0;border-radius:2px; }
+.pb{ /* base disc */ flex-shrink:0;border-radius:45%; }
+
+/* red */
+.pawn.r .ph{background:radial-gradient(circle at 38% 32%, var(--rh), var(--rc), var(--rs));}
+.pawn.r .pn{background:linear-gradient(180deg, var(--rc) 0%, var(--rs) 100%);}
+.pawn.r .pb{background:radial-gradient(ellipse at 50% 25%, var(--rc), var(--rs));border:1.5px solid rgba(255,130,110,.35);}
+/* blue */
+.pawn.b .ph{background:radial-gradient(circle at 38% 32%, var(--bh), var(--bc), var(--bs));}
+.pawn.b .pn{background:linear-gradient(180deg, var(--bc) 0%, var(--bs) 100%);}
+.pawn.b .pb{background:radial-gradient(ellipse at 50% 25%, var(--bc), var(--bs));border:1.5px solid rgba(90,150,255,.35);}
+/* green */
+.pawn.g .ph{background:radial-gradient(circle at 38% 32%, var(--gh), var(--gc), var(--gs));}
+.pawn.g .pn{background:linear-gradient(180deg, var(--gc) 0%, var(--gs) 100%);}
+.pawn.g .pb{background:radial-gradient(ellipse at 50% 25%, var(--gc), var(--gs));border:1.5px solid rgba(80,210,100,.35);}
+/* yellow */
+.pawn.y .ph{background:radial-gradient(circle at 38% 32%, var(--yh), var(--yc), var(--ys));}
+.pawn.y .pn{background:linear-gradient(180deg, var(--yc) 0%, var(--ys) 100%);}
+.pawn.y .pb{background:radial-gradient(ellipse at 50% 25%, var(--yc), var(--ys));border:1.5px solid rgba(255,220,50,.5);}
+
+/* movable = glow + bounce */
+.pawn.mv{
+  pointer-events:all;cursor:pointer;
+  filter:drop-shadow(0 0 10px rgba(255,255,255,.85)) drop-shadow(0 5px 7px rgba(0,0,0,.6));
+  animation:ppulse .7s ease-in-out infinite;
+}
+@keyframes ppulse{
+  0%,100%{transform:translateY(0) scale(1);}
+  50%{transform:translateY(-5px) scale(1.1);}
+}
+
+/* WINNER */
+#ws{display:none;position:fixed;inset:0;z-index:999;background:rgba(8,3,20,.93);backdrop-filter:blur(10px);flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#ws.show{display:flex;}
+#we{font-size:72px;animation:bou .7s ease infinite alternate;}
+@keyframes bou{from{transform:translateY(0);}to{transform:translateY(-14px);}}
+#wt{font-family:'Fredoka One',sans-serif;font-size:36px;color:var(--gold2);letter-spacing:.05em;}
+#wu{font-size:14px;color:var(--text2);}
+#wa{margin-top:8px;padding:13px 36px;border-radius:14px;border:none;background:linear-gradient(135deg,#A07810,var(--gold2));color:#14082A;font-family:'Cairo',sans-serif;font-size:16px;font-weight:800;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="scores">
+    <div class="sp" id="sp0"><div class="sd" style="background:var(--rc)"></div><div><div class="sn">Red</div><div class="sv" id="sv0">0🏠</div></div></div>
+    <div class="sp" id="sp1"><div class="sd" style="background:var(--bc)"></div><div><div class="sn">Blue</div><div class="sv" id="sv1">0🏠</div></div></div>
+    <div class="sp" id="sp2"><div class="sd" style="background:var(--gc)"></div><div><div class="sn">Green</div><div class="sv" id="sv2">0🏠</div></div></div>
+    <div class="sp" id="sp3"><div class="sd" style="background:#F9C800"></div><div><div class="sn">Yellow</div><div class="sv" id="sv3">0🏠</div></div></div>
+  </div>
+  <div id="sb">
+    <div id="ti"><div id="td"></div><div id="tl">Red's Turn</div></div>
+    <div id="ra">
+      <div id="mg">Roll the dice!</div>
+      <div id="dc-wrap">
+        <div id="dc" onclick="onDice()">
+          <div class="dp" id="d0"></div><div class="dp" id="d1"></div><div class="dp" id="d2"></div>
+          <div class="dp" id="d3"></div><div class="dp" id="d4"></div><div class="dp" id="d5"></div>
+          <div class="dp" id="d6"></div><div class="dp" id="d7"></div><div class="dp" id="d8"></div>
+          <div id="dc-icon">🎲</div>
+        </div>
+        <div id="dc-label">ROLL</div>
+      </div>
+    </div>
+  </div>
+  <div id="bw"><div id="bd"></div></div>
+</div>
+<div id="ws">
+  <div id="we">🏆</div><div id="wt">Red Wins!</div>
+  <div id="wu">All 4 pawns reached home!</div>
+  <button id="wa" onclick="startGame()">🔄 Play Again</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// LUDO — CORRECT LOGIC + VERTICAL STANDING PAWNS
+// ═══════════════════════════════════════════════════
+
+const PATH=[
+  [14,6],[13,6],[12,6],[11,6],[10,6],[9,6],
+  [8,5],[8,4],[8,3],[8,2],[8,1],[8,0],
+  [7,0],[6,0],
+  [6,1],[6,2],[6,3],[6,4],[6,5],
+  [5,6],[4,6],[3,6],[2,6],[1,6],[0,6],
+  [0,7],[0,8],
+  [1,8],[2,8],[3,8],[4,8],[5,8],
+  [6,9],[6,10],[6,11],[6,12],[6,13],[6,14],
+  [7,14],[8,14],
+  [8,13],[8,12],[8,11],[8,10],[8,9],
+  [9,8],[10,8],[11,8],[12,8],[13,8],[14,8],
+  [14,7],
+];
+
+const LANES={
+  r:[[13,7],[12,7],[11,7],[10,7],[9,7]],
+  b:[[7,1],[7,2],[7,3],[7,4],[7,5]],
+  g:[[1,7],[2,7],[3,7],[4,7],[5,7]],
+  y:[[7,13],[7,12],[7,11],[7,10],[7,9]],
+};
+
+const START={r:0,b:13,g:26,y:39};
+const SAFE=new Set([0,8,13,21,26,34,39,47]);
+
+// Yard grid positions [row,col] for each of the 4 coins — mapped to the 2×2 slot grid
+// Coins 0,1,2,3 correspond to slots top-left, top-right, bottom-left, bottom-right
+const YARDS={
+  r:[[10,1],[10,4],[13,1],[13,4]],
+  b:[[1,1],[1,4],[4,1],[4,4]],
+  g:[[1,10],[1,13],[4,10],[4,13]],
+  y:[[10,10],[10,13],[13,10],[13,13]],
+};
+
+const COLS=['r','b','g','y'];
+const NAMES={r:'Red',b:'Blue',g:'Green',y:'Yellow'};
+const CCSS={r:'var(--rc)',b:'var(--bc)',g:'var(--gc)',y:'var(--yc)'};
+// Dot patterns: 9 positions in 3×3 grid (0=top-left … 8=bottom-right)
+// positions: 0 1 2 / 3 4 5 / 6 7 8
+const DICE_DOTS={
+  1:[false,false,false, false,true,false, false,false,false],
+  2:[true, false,false, false,false,false, false,false,true],
+  3:[true, false,false, false,true,false,  false,false,true],
+  4:[true, false,true,  false,false,false, true, false,true],
+  5:[true, false,true,  false,true,false,  true, false,true],
+  6:[true, false,true,  true, false,true,  true, false,true],
+};
+const DOT_COLORS={r:'#C62828',b:'#1565C0',g:'#2E7D32',y:'#B89000'};
+
+function showDice(val, color){
+  const dc=document.getElementById('dc');
+  dc.classList.add('rolled');
+  const dots=DICE_DOTS[val]||DICE_DOTS[1];
+  const dotColor = color ? DOT_COLORS[color] : '#1A0A2E';
+  dots.forEach((on,i)=>{
+    const el=document.getElementById('d'+i);
+    if(el){ el.classList.toggle('on',on); el.style.background=on?dotColor:'transparent'; }
+  });
+  const lbl=document.getElementById('dc-label');
+  if(lbl) lbl.textContent=`ROLLED ${val}`;
+}
+
+function clearDice(){
+  const dc=document.getElementById('dc');
+  dc.classList.remove('rolled');
+  for(let i=0;i<9;i++){
+    const el=document.getElementById('d'+i);
+    if(el){el.classList.remove('on');el.style.background='transparent';}
+  }
+  const lbl=document.getElementById('dc-label');
+  if(lbl) lbl.textContent='ROLL';
+}
+
+let G={}, CS=30;
+// Pawn dimensions (set in buildBoard based on CS)
+let PH=10, PN=5, PB=6, PTH=21, PBW=16;
+
+function startGame(){
+  document.getElementById('ws').classList.remove('show');
+  G={turn:0,phase:'roll',dice:0,coins:{},done:[]};
+  COLS.forEach(c=>{
+    G.coins[c]=[0,1,2,3].map(i=>({id:i,color:c,steps:-1}));
+  });
+  buildBoard();
+  render();
+  updateSB();
+}
+
+function buildBoard(){
+  const wrap=document.getElementById('bw');
+  const bd=document.getElementById('bd');
+  const avail=Math.min(wrap.clientWidth,wrap.clientHeight,520);
+  CS=Math.floor(avail/15);
+  const sz=CS*15;
+  bd.style.width=sz+'px';
+  bd.style.height=sz+'px';
+  bd.innerHTML='';
+
+  // Pawn proportions relative to cell size
+  PH  = Math.max(8,  Math.round(CS*0.46));  // head radius
+  PN  = Math.max(4,  Math.round(CS*0.22));  // neck height
+  PB  = Math.max(4,  Math.round(CS*0.22));  // base height
+  PBW = Math.max(10, Math.round(CS*0.70));  // base width
+  PTH = PH*2 + PN + PB;                     // total pawn height
+
+  // Build grid
+  for(let r=0;r<15;r++){
+    for(let c=0;c<15;c++){
+      const el=document.createElement('div');
+      el.className='bc';
+      el.id=`bc${r}_${c}`;
+      el.style.cssText=`left:${c*CS}px;top:${r*CS}px;width:${CS}px;height:${CS}px;font-size:${Math.max(6,CS*.3)}px;`;
+      styleCell(el,r,c);
+      bd.appendChild(el);
+    }
+  }
+
+  // Home quadrant overlays — each spans 6×6 cells
+  // top-left corner of each quad in pixels:
+  // Red=bottom-left: top=9*CS, left=0
+  // Blue=top-left: top=0, left=0
+  // Green=top-right: top=0, left=9*CS
+  // Yellow=bottom-right: top=9*CS, left=9*CS
+  const quads=[
+    {c:'r',cls:'hqr',top:9*CS,left:0},
+    {c:'b',cls:'hqb',top:0,   left:0},
+    {c:'g',cls:'hqg',top:0,   left:9*CS},
+    {c:'y',cls:'hqy',top:9*CS,left:9*CS},
+  ];
+  quads.forEach(q=>{
+    const div=document.createElement('div');
+    div.className=`hquad ${q.cls}`;
+    div.id=`hq_${q.c}`;
+    div.style.cssText=`top:${q.top}px;left:${q.left}px;width:${6*CS}px;height:${6*CS}px;`;
+    for(let i=0;i<4;i++){
+      const slot=document.createElement('div');
+      slot.className='hslot';
+      slot.id=`hs_${q.c}_${i}`;
+      div.appendChild(slot);
+    }
+    bd.appendChild(div);
+  });
+}
+
+function styleCell(el,r,c){
+  // Home quadrant cells (background colour only — overlay draws on top)
+  if(r>=9&&r<=14&&c>=0&&c<=5){el.classList.add('chr');return;}
+  if(r>=0&&r<=5&&c>=0&&c<=5){el.classList.add('chb');return;}
+  if(r>=0&&r<=5&&c>=9&&c<=14){el.classList.add('chg');return;}
+  if(r>=9&&r<=14&&c>=9&&c<=14){el.classList.add('chy');return;}
+  // Center 3×3
+  if(r>=6&&r<=8&&c>=6&&c<=8){
+    if(r===7&&c===7){el.classList.add('cctr');el.style.fontSize=Math.max(14,CS*.52)+'px';el.textContent='🏠';return;}
+    const m={'6,6':'linear-gradient(135deg,#FFCDD2 50%,#fff 50%)','6,8':'linear-gradient(225deg,#C8E6C9 50%,#fff 50%)','8,6':'linear-gradient(45deg,#BBDEFB 50%,#fff 50%)','8,8':'linear-gradient(315deg,#FFF3E0 50%,#fff 50%)','6,7':'#C8E6C9','8,7':'#FFCDD2','7,6':'#BBDEFB','7,8':'#FFF3E0'};
+    el.style.background=m[r+','+c]||'#fff';return;
+  }
+  // Lanes
+  if(c===7&&r>=9&&r<=13){el.classList.add('clr');return;}
+  if(r===7&&c>=1&&c<=5){el.classList.add('clb');return;}
+  if(c===7&&r>=1&&r<=5){el.classList.add('clg');return;}
+  if(r===7&&c>=9&&c<=13){el.classList.add('cly');return;}
+  // Main path
+  const idx=pidx(r,c);
+  if(idx!==-1){
+    if(SAFE.has(idx)){el.classList.add('cs','star');return;}
+    if(idx===0)el.classList.add('csr');
+    else if(idx===13)el.classList.add('csb');
+    else if(idx===26)el.classList.add('csg');
+    else if(idx===39)el.classList.add('csy');
+    else el.classList.add('cp');
+    return;
+  }
+  el.classList.add('cp');
+}
+function pidx(r,c){for(let i=0;i<PATH.length;i++)if(PATH[i][0]===r&&PATH[i][1]===c)return i;return -1;}
+
+// ── COIN POSITION → CELL [row,col] ──
+function coinCell(coin){
+  const s=coin.steps;
+  if(s===-1) return YARDS[coin.color][coin.id];
+  if(s>=52&&s<=56) return LANES[coin.color][s-52];
+  if(s===57) return [7,7];
+  return PATH[(START[coin.color]+s)%52];
+}
+
+// ── RENDER PAWNS ──
+function render(){
+  document.querySelectorAll('.pawn').forEach(e=>e.remove());
+  const bd=document.getElementById('bd');
+
+  // Group coins by cell
+  const grp={};
+  COLS.forEach(c=>G.coins[c].forEach(coin=>{
+    const k=coinCell(coin).join(',');
+    (grp[k]||(grp[k]=[])).push(coin);
+  }));
+
+  Object.entries(grp).forEach(([k,coins])=>{
+    const [row,col]=k.split(',').map(Number);
+    const cx=col*CS+CS/2;
+    // Bottom of cell — pawn base sits near cell bottom
+    const cy_base=row*CS+CS*0.82;
+    const n=coins.length;
+
+    coins.forEach((coin,i)=>{
+      const off=stkOff(n,i,PH*0.55);
+      const pw=document.createElement('div');
+      pw.className=`pawn ${coin.color}`;
+      pw.id=`pw_${coin.color}_${coin.id}`;
+
+      // Pawn left: center minus head radius + offset
+      const px=cx - PH + off.x;
+      // Pawn top: base bottom = cy_base, so top = cy_base - total height
+      const py=cy_base - PTH + off.y;
+
+      pw.style.cssText=`left:${px}px;top:${py}px;width:${PH*2}px;height:${PTH}px;`;
+
+      const head=document.createElement('div');
+      head.className='ph';
+      head.style.cssText=`width:${PH*2}px;height:${PH*2}px;`;
+
+      const neck=document.createElement('div');
+      neck.className='pn';
+      const nw=Math.round(PH*0.56);
+      neck.style.cssText=`width:${nw}px;height:${PN}px;margin-left:${(PH*2-nw)/2}px;margin-top:-1px;`;
+
+      const base=document.createElement('div');
+      base.className='pb';
+      base.style.cssText=`width:${PBW}px;height:${PB}px;margin-left:${(PH*2-PBW)/2}px;margin-top:-1px;`;
+
+      pw.appendChild(head);
+      pw.appendChild(neck);
+      pw.appendChild(base);
+      pw.addEventListener('click',()=>onPawn(coin.color,coin.id));
+      bd.appendChild(pw);
+    });
+  });
+
+  applyMovable();
+  updateScores();
+}
+
+function stkOff(n,i,g){
+  if(n===1)return{x:0,y:0};
+  const s=g*0.65;
+  if(n===2)return[{x:-s,y:0},{x:s,y:0}][i]||{x:0,y:0};
+  if(n===3)return[{x:0,y:-s*.8},{x:-s,y:s*.6},{x:s,y:s*.6}][i]||{x:0,y:0};
+  return[{x:-s,y:-s*.5},{x:s,y:-s*.5},{x:-s,y:s*.5},{x:s,y:s*.5}][i]||{x:0,y:0};
+}
+
+function applyMovable(){
+  document.querySelectorAll('.pawn').forEach(e=>e.classList.remove('mv'));
+  if(G.phase!=='move')return;
+  const c=COLS[G.turn];
+  getMovable(c,G.dice).forEach(coin=>{
+    const el=document.getElementById(`pw_${c}_${coin.id}`);
+    if(el)el.classList.add('mv');
+  });
+}
+
+// ── GAME LOGIC ──
+function getMovable(color,val){
+  return G.coins[color].filter(coin=>{
+    if(coin.steps===57)return false;
+    if(coin.steps===-1)return val===6;
+    return coin.steps+val<=57;
+  });
+}
+
+function onDice(){
+  if(G.phase!=='roll')return;
+  const dc=document.getElementById('dc');
+  dc.classList.add('spin');
+  setTimeout(()=>dc.classList.remove('spin'),420);
+  const val=Math.floor(Math.random()*6)+1;
+  G.dice=val;G.phase='move';
+  showDice(val, COLS[G.turn]);
+  // Color dice border to match current player
+  dc.style.borderColor=DOT_COLORS[COLS[G.turn]];
+  dc.classList.add('off');
+  const c=COLS[G.turn];
+  const mv=getMovable(c,val);
+  if(mv.length===0){setMsg('No moves! Skip.');setTimeout(()=>nextTurn(),1100);return;}
+  if(mv.length===1){setMsg(`<b>${NAMES[c]}:</b> Auto!`);setTimeout(()=>doMove(c,mv[0].id),450);return;}
+  setMsg(`<b>${NAMES[c]}:</b> Tap a pawn!`);
+  applyMovable();
+}
+
+function onPawn(color,coinId){
+  if(G.phase!=='move')return;
+  if(color!==COLS[G.turn])return;
+  if(!getMovable(color,G.dice).find(c=>c.id===coinId))return;
+  doMove(color,coinId);
+}
+
+function doMove(color,coinId){
+  const coin=G.coins[color].find(c=>c.id===coinId);
+  const val=G.dice;
+  let msg='';
+  if(coin.steps===-1){coin.steps=0;msg=`<b>${NAMES[color]}</b> launches! 🚀`;}
+  else{coin.steps=Math.min(coin.steps+val,57);msg=`<b>${NAMES[color]}</b> moved ${val}.`;}
+  // capture
+  if(coin.steps>=1&&coin.steps<=51){
+    const abs=(START[color]+coin.steps)%52;
+    if(!SAFE.has(abs)){
+      const cell=coinCell(coin);
+      COLS.forEach(oc=>{
+        if(oc===color)return;
+        G.coins[oc].forEach(other=>{
+          if(other.steps===-1||other.steps>=52)return;
+          const oth=coinCell(other);
+          if(oth[0]===cell[0]&&oth[1]===cell[1]){other.steps=-1;msg=`<b>${NAMES[color]}</b> captured <b>${NAMES[oc]}</b>! 💥`;}
+        });
+      });
+    }
+  }
+  if(coin.steps===57)msg=`<b>${NAMES[color]}</b> pawn home! 🎉`;
+  setMsg(msg);render();
+  if(checkWin(color))return;
+  if(val===6){setTimeout(()=>{setMsg(`<b>${NAMES[color]}</b> rolled 6 — go again!`);resetDice();updateSB();},700);}
+  else setTimeout(()=>nextTurn(),700);
+}
+
+function checkWin(color){
+  if(!G.coins[color].every(c=>c.steps===57))return false;
+  const pi=COLS.indexOf(color);
+  G.done.push(pi);
+  document.getElementById(`sp${pi}`).classList.add('won');
+  setTimeout(()=>{
+    const em={r:'🔴',b:'🔵',g:'🟢',y:'🟡'};
+    document.getElementById('we').textContent=em[color]+'🏆';
+    document.getElementById('wt').textContent=`${NAMES[color]} Wins!`;
+    document.getElementById('ws').classList.add('show');
+  },700);
+  return true;
+}
+
+function nextTurn(){
+  G.turn=(G.turn+1)%4;
+  let g=0;while(G.done.includes(G.turn)&&g<4){G.turn=(G.turn+1)%4;g++;}
+  resetDice();updateSB();
+}
+function resetDice(){
+  G.phase='roll';G.dice=0;
+  const dc=document.getElementById('dc');
+  dc.classList.remove('off');
+  dc.style.borderColor='var(--gold)';
+  clearDice();
+}
+function updateSB(){
+  const c=COLS[G.turn];
+  document.getElementById('td').style.background=CCSS[c];
+  document.getElementById('tl').textContent=`${NAMES[c]}'s Turn`;
+  COLS.forEach((_,i)=>document.getElementById(`sp${i}`).classList.toggle('active',i===G.turn));
+  if(G.phase==='roll')setMsg('Roll the dice!');
+}
+function updateScores(){COLS.forEach((c,i)=>{const n=G.coins[c].filter(co=>co.steps===57).length;document.getElementById(`sv${i}`).textContent=`${n}/4🏠`;});}
+function setMsg(h){document.getElementById('mg').innerHTML=h;}
+window.addEventListener('resize',()=>{buildBoard();render();});
+startGame();
+</script>
+</body>
+</html>

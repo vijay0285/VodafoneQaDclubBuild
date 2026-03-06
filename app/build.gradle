@@ -1,0 +1,76 @@
+plugins {
+    id 'com.android.application'
+}
+
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def versionPropertiesFile = rootProject.file("version.properties")
+def versionProperties = new Properties()
+if (versionPropertiesFile.exists()) {
+    versionProperties.load(new FileInputStream(versionPropertiesFile))
+} else {
+    versionProperties["VERSION_CODE"] = "1"
+    versionProperties["VERSION_NAME"] = "1.0.0"
+    versionPropertiesFile.withWriter { writer -> versionProperties.store(writer, null) }
+}
+
+def baseVersionCode = (versionProperties["VERSION_CODE"] ?: "1").toInteger()
+def versionNameValue = versionProperties["VERSION_NAME"] ?: "1.0.0"
+def isReleaseBuildRequested = gradle.startParameter.taskNames.any { task ->
+    def t = task.toLowerCase()
+    t.contains("releas") || t.contains("bundle")
+}
+def resolvedVersionCode = baseVersionCode
+
+if (isReleaseBuildRequested) {
+    resolvedVersionCode = baseVersionCode + 1
+    versionProperties["VERSION_CODE"] = resolvedVersionCode.toString()
+    versionPropertiesFile.withWriter { writer -> versionProperties.store(writer, null) }
+    println("Auto bumped VERSION_CODE to ${resolvedVersionCode}")
+}
+
+android {
+    namespace 'com.stcksa.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.stcksa.app"
+        minSdk 21
+        targetSdk 34
+        versionCode resolvedVersionCode
+        versionName versionNameValue
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties["storeFile"])
+            storePassword keystoreProperties["storePassword"]
+            keyAlias keystoreProperties["keyAlias"]
+            keyPassword keystoreProperties["keyPassword"]
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'com.google.android.gms:play-services-auth-api-phone:18.0.1'
+    implementation 'com.google.android.gms:play-services-auth:21.2.0'
+}
