@@ -155,11 +155,11 @@ You can create a free one at: https://www.privacypolicygenerator.info/
 ## 📋 Project File Structure
 
 ```
-STCKSA/
+VFQ/
 ├── app/
 │   ├── src/main/
 │   │   ├── AndroidManifest.xml
-│   │   ├── java/com/stcksa/app/
+│   │   ├── java/com/vfq/app/
 │   │   │   └── MainActivity.java      ← Main app logic
 │   │   └── res/
 │   │       ├── layout/
