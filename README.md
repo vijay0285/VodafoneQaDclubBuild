@@ -1,9 +1,9 @@
 # STCKSA Android App — Build & Publish Guide
 
 ## 📦 Project Info
-- **App Name:** STCKSA
-- **Package:** com.stcksa.app
-- **URL:** http://wap.yallanelaab.com/STCKSA/Campaign/Promo.aspx?ctg=APP
+- **App Name:** Dclub
+- **Package:** com.vfq.app
+- **URL:** http://dclub.vfq.theclub.mobi/Campaign/APP.aspx?ctg=OF06
 - **Min Android:** 5.0 (API 21)
 - **Target Android:** 14 (API 34)
 
