@@ -1,4 +1,4 @@
-package com.stcksa.app;
+package com.vfq.app;
 
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.graphics.Bitmap;
-import android.net.Uri;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
@@ -47,7 +46,7 @@ public class MainActivity extends Activity {
     private static final Pattern OTP_EN_MESSAGE_PATTERN =
             Pattern.compile("\\b(\\d{4})\\b\\s*is\\s*your\\s*one[-\\s]?time[-\\s]?password", Pattern.CASE_INSENSITIVE);
     private static final Pattern OTP_AR_MESSAGE_PATTERN =
-            Pattern.compile("\\b(\\d{4})\\b\\s*هو\\s*رمز\\s*التحقق");
+            Pattern.compile("\\b(\\d{4})\\b\\s*Ù‡Ùˆ\\s*Ø±Ù…Ø²\\s*Ø§Ù„ØªØ­Ù‚Ù‚");
     private static final int SMS_CONSENT_REQUEST = 200;
     private static final int PHONE_HINT_REQUEST = 201;
     private static final int OTP_INJECT_MAX_RETRIES = 12;

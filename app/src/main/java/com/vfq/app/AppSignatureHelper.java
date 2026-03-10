@@ -1,4 +1,4 @@
-package com.stcksa.app;
+package com.vfq.app;
 
 import android.content.Context;
 import android.content.ContextWrapper;

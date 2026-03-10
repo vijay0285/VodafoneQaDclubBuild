@@ -23,6 +23,8 @@ captures/
 # Local tooling artifacts
 gradle-*.zip
 gradle-*/
+.gradle-tmp/
+.tmp/
 
 # OS files
 .DS_Store

@@ -8,6 +8,27 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+def envOrProperty = { String envName, String propertyName ->
+    def envValue = System.getenv(envName)
+    if (envValue != null && !envValue.trim().isEmpty()) {
+        return envValue.trim()
+    }
+
+    def propertyValue = keystoreProperties[propertyName]
+    return propertyValue != null ? propertyValue.toString().trim() : null
+}
+
+def releaseStoreFilePath = envOrProperty("ANDROID_KEYSTORE_FILE", "storeFile")
+def releaseStorePassword = envOrProperty("ANDROID_KEYSTORE_PASSWORD", "storePassword")
+def releaseKeyAlias = envOrProperty("ANDROID_KEY_ALIAS", "keyAlias")
+def releaseKeyPassword = envOrProperty("ANDROID_KEY_PASSWORD", "keyPassword")
+def releaseStoreFile = releaseStoreFilePath ? rootProject.file(releaseStoreFilePath) : null
+def hasReleaseSigning = releaseStoreFile != null
+        && releaseStoreFile.exists()
+        && releaseStorePassword
+        && releaseKeyAlias
+        && releaseKeyPassword
+
 def versionPropertiesFile = rootProject.file("version.properties")
 def versionProperties = new Properties()
 if (versionPropertiesFile.exists()) {
@@ -27,6 +48,12 @@ def isReleaseBuildRequested = gradle.startParameter.taskNames.any { task ->
 def resolvedVersionCode = baseVersionCode
 
 if (isReleaseBuildRequested) {
+    if (!hasReleaseSigning) {
+        throw new GradleException(
+                "Release signing is not configured. Add keystore.properties with a valid upload keystore " +
+                        "or set ANDROID_KEYSTORE_FILE, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD."
+        )
+    }
     resolvedVersionCode = baseVersionCode + 1
     versionProperties["VERSION_CODE"] = resolvedVersionCode.toString()
     versionPropertiesFile.withWriter { writer -> versionProperties.store(writer, null) }
@@ -34,11 +61,11 @@ if (isReleaseBuildRequested) {
 }
 
 android {
-    namespace 'com.stcksa.app'
+    namespace 'com.vfq.app'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.stcksa.app"
+        applicationId "com.vfq.app"
         minSdk 21
         targetSdk 34
         versionCode resolvedVersionCode
@@ -47,10 +74,12 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(keystoreProperties["storeFile"])
-            storePassword keystoreProperties["storePassword"]
-            keyAlias keystoreProperties["keyAlias"]
-            keyPassword keystoreProperties["keyPassword"]
+            if (hasReleaseSigning) {
+                storeFile releaseStoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
 
