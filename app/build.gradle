@@ -46,6 +46,7 @@ def isReleaseBuildRequested = gradle.startParameter.taskNames.any { task ->
     t.contains("releas") || t.contains("bundle")
 }
 def resolvedVersionCode = baseVersionCode
+def shouldPersistVersionCode = false
 
 if (isReleaseBuildRequested) {
     if (!hasReleaseSigning) {
@@ -55,19 +56,25 @@ if (isReleaseBuildRequested) {
         )
     }
     resolvedVersionCode = baseVersionCode + 1
-    versionProperties["VERSION_CODE"] = resolvedVersionCode.toString()
-    versionPropertiesFile.withWriter { writer -> versionProperties.store(writer, null) }
     println("Auto bumped VERSION_CODE to ${resolvedVersionCode}")
+    shouldPersistVersionCode = true
+}
+
+gradle.buildFinished { result ->
+    if (shouldPersistVersionCode && result.failure == null) {
+        versionProperties["VERSION_CODE"] = resolvedVersionCode.toString()
+        versionPropertiesFile.withWriter { writer -> versionProperties.store(writer, null) }
+    }
 }
 
 android {
     namespace 'com.vfq.app'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.vfq.app"
         minSdk 21
-        targetSdk 34
+        targetSdk 35
         versionCode resolvedVersionCode
         versionName versionNameValue
     }

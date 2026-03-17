@@ -24,7 +24,12 @@ captures/
 gradle-*.zip
 gradle-*/
 .gradle-tmp/
+.gradle-tmp-*/
 .tmp/
+.android/
+cmdline-tools/
+commandlinetools-win-*_latest.zip
+**/build-backup-*/
 
 # OS files
 .DS_Store
